@@ -416,7 +416,7 @@ def generate_text(
 # Test Pipeline
 # -------------------------
 if __name__ == "__main__":
-    dataset_path = "dataset.txt"
+    dataset_path = "gutenberg_texts/alice_wonderland.txt"
     model_path = "models/best_model_acc.keras"
     
     # Create a dummy dataset for testing
@@ -428,21 +428,17 @@ if __name__ == "__main__":
             f.write("or to take arms against a sea of troubles\n")
             f.write("and by opposing end them")
 
-    # The issue with perfect accuracy with SimpleRNN and post padding is due to data leakage.
-    # The fix is to ensure the last word is the target and is not part of the input sequence.
-    # The original code's `X, y = sequences[:, :-1], sequences[:, -1:]` was flawed.
-    # The corrected `preprocess_data` function fixes this.
     try:
         X, y, total_words, max_len, tokenizer = preprocess_data(
-            filepath=dataset_path, num_words=2000, padding="post", fresh=True
+            filepath=dataset_path, num_words=10000, padding="pre", fresh=True
         )
 
         model = build_model(
             total_words=total_words,
             max_len=max_len,
-            mode="SimpleRNN",
-            rnn_units=32, # Reduced for faster training
-            embedding_units=64, # Reduced for faster training
+            mode="GRU",
+            rnn_units=200, 
+            embedding_units=250, 
             dropout_rate=0.4,
             rnn_hidden_layers=1
         )
@@ -452,10 +448,11 @@ if __name__ == "__main__":
             y=y,
             model=model,
             earlystop=True,
+            earlystop_patience=5,
             show_summary=True,
-            fresh=True,
-            epochs=20, # Reduced for a quicker test,
-            batch_size=1
+            fresh=False,
+            epochs=50, 
+            batch_size=512
         )
 
         print("\nGenerated Text:")
@@ -463,11 +460,11 @@ if __name__ == "__main__":
             generate_text(
                 model=trained_model,
                 tokenizer=tokenizer,
-                seed_text="what light",
+                seed_text="Brandon",
                 max_len=max_len,
-                padding="post",
-                predict_next_words=5,
-                temp=0.8
+                padding="pre",
+                predict_next_words=3,
+                temp=0.1
             )
         )
 
