@@ -66,12 +66,13 @@ def preprocess_data(
     tokenizer.fit_on_texts([data])
 
     # Building sequences
+    # faster: tokenize all lines at once instead of per-line call
+    lines = data.split("\n")
+    tokenized_lines = tokenizer.texts_to_sequences(lines)
     sequences = []
-    for line in data.split("\n"):
-        token_list = tokenizer.texts_to_sequences([line])[0]
+    for token_list in tokenized_lines:
         for i in range(1, len(token_list)):
-            n_gram_sequence = token_list[: i + 1]
-            sequences.append(n_gram_sequence)
+            sequences.append(token_list[: i + 1])
 
     if not sequences:
         raise ValueError("No valid sequences were created for training.")
@@ -366,20 +367,25 @@ def generate_text(
         
         # Top-K filtering
         if topK > 0:
-            indices_to_remove = preds.argsort()[:-topK]
-            preds[indices_to_remove] = 0
-            preds = preds / np.sum(preds) if np.sum(preds) > 0 else np.ones_like(preds) / len(preds)
+            # faster top-k using argpartition
+            top_indices = np.argpartition(preds, -topK)[-topK:]
+            mask = np.ones_like(preds, dtype=bool)
+            mask[top_indices] = False
+            preds[mask] = 0
+            s = preds.sum()
+            preds = preds / s if s > 0 else np.ones_like(preds) / len(preds)
 
         # Top-P filtering
         if topP < 1.0:
-            sorted_probs = np.sort(preds)[::-1]
             sorted_indices = np.argsort(preds)[::-1]
+            sorted_probs = preds[sorted_indices]
             cumulative_probs = np.cumsum(sorted_probs)
-            # Find the index of the first cumulative probability greater than topP
-            cutoff_idx = np.where(cumulative_probs > topP)[0][0]
-            indices_to_remove = sorted_indices[cutoff_idx:]
-            preds[indices_to_remove] = 0
-            preds = preds / np.sum(preds) if np.sum(preds) > 0 else np.ones_like(preds) / len(preds)
+            cutoff_idx = np.searchsorted(cumulative_probs, topP)
+            if cutoff_idx < len(sorted_indices):
+                indices_to_remove = sorted_indices[cutoff_idx:]
+                preds[indices_to_remove] = 0
+            s = preds.sum()
+            preds = preds / s if s > 0 else np.ones_like(preds) / len(preds)
         
         preds = np.nan_to_num(preds)
         if np.sum(preds) == 0:
@@ -416,17 +422,8 @@ def generate_text(
 # Test Pipeline
 # -------------------------
 if __name__ == "__main__":
-    dataset_path = "gutenberg_texts/alice_wonderland.txt"
+    dataset_path = "data.txt"   
     model_path = "models/best_model_acc.keras"
-    
-    # Create a dummy dataset for testing
-    if not os.path.exists(dataset_path):
-        with open(dataset_path, "w") as f:
-            f.write("to be or not to be that is the question\n")
-            f.write("whether 'tis nobler in the mind to suffer\n")
-            f.write("the slings and arrows of outrageous fortune\n")
-            f.write("or to take arms against a sea of troubles\n")
-            f.write("and by opposing end them")
 
     try:
         X, y, total_words, max_len, tokenizer = preprocess_data(
@@ -437,8 +434,8 @@ if __name__ == "__main__":
             total_words=total_words,
             max_len=max_len,
             mode="GRU",
-            rnn_units=200, 
-            embedding_units=250, 
+            rnn_units=180, 
+            embedding_units=100, 
             dropout_rate=0.4,
             rnn_hidden_layers=1
         )
@@ -451,8 +448,8 @@ if __name__ == "__main__":
             earlystop_patience=5,
             show_summary=True,
             fresh=False,
-            epochs=50, 
-            batch_size=512
+            epochs=100, 
+            batch_size=2048
         )
 
         print("\nGenerated Text:")
