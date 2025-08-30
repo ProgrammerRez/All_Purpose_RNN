@@ -1,6 +1,6 @@
-tensorflow
 scikit-learn
 pickle
 streamlit
 numpy
 pandas
+tensorflow==2.20.0
