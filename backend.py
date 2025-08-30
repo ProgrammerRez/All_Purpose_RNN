@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 # Configurable Preprocessing
 # -------------------------
 def preprocess_data(
-    filepath: str = "dataset.txt",
+    data: str,
     num_words: int = 5000,
     oov_token: str = "<OOV>",
     lower: bool = True,
@@ -26,7 +26,7 @@ def preprocess_data(
     Reads text, tokenizes, creates sequences, and saves tokenizer.
 
     Args:
-        filepath (str): Path to the text dataset file.
+        data (str): Text dataset file.
         num_words (int): The maximum number of words to keep, based on word frequency.
         oov_token (str): The out-of-vocabulary token.
         lower (bool): Whether to convert text to lowercase.
@@ -49,12 +49,6 @@ def preprocess_data(
         print("[INFO] Previous tokenizer deleted for a fresh start.")
 
     # Reading data
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = f.read()
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Dataset file not found at: {filepath}")
-
     if not data or not isinstance(data, str):
         raise ValueError("Data must be a valid non-empty string.")
 
@@ -427,7 +421,7 @@ if __name__ == "__main__":
 
     try:
         X, y, total_words, max_len, tokenizer = preprocess_data(
-            filepath=dataset_path, num_words=10000, padding="pre", fresh=True
+            data=open(dataset_path,'r').read(), num_words=10000, padding="pre", fresh=True
         )
 
         model = build_model(
