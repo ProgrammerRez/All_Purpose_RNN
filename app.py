@@ -166,7 +166,7 @@ with tabs[1]:
             use_reducelr = st.checkbox("ReduceLROnPlateau", True)
             patience_lr = st.number_input("ReduceLR Patience", 1, 10, 2)
             factor_lr = st.slider("ReduceLR Factor", 0.1, 0.9, 0.5)
-
+        st.warning("Please be patient and wait for it to train and monitor it in the manage app section and \n by all means don't press the button twice")
         if st.button("Train Model"):
             model = build_model(
                 total_words=total_words,
